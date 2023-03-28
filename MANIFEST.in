@@ -1,0 +1,2 @@
+include src/fft_image_compression/VERSION
+include ./requirements.txt
