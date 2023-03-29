@@ -44,20 +44,19 @@ def display_images(images: list[numpy.ndarray], window_names: list[str] | None =
     while running:
         for i, image in enumerate(images):
             cv2.imshow(f"Img({i})" if window_names is None else window_names[i], image)
-            k = cv2.waitKey() & ord("n")
-            q = cv2.waitKey() & ord("q")
-            if k:
+            key = cv2.waitKey()
+
+            if key == ord("n"):
                 running = False
-            if q:
+            if key == ord("q"):
                 cv2.destroyAllWindows()
                 return
     for i, image in enumerate(images):
         cv2.destroyWindow(f"Img({i})" if window_names is None else window_names[i])
 
 
-def compress(original_img: numpy.ndarray) -> numpy.ndarray:
+def compress(original_img: numpy.ndarray, threshold=0.9) -> numpy.ndarray:
     compressed_img = numpy.zeros((original_img.shape), original_img.dtype)
-    threshold = 0.9
 
     for channel in range(compressed_img.shape[2]):
 
