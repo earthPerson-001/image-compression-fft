@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
 SRC_DIR = pathlib.Path(os.path.relpath(SRC_DIR, pathlib.Path.cwd()))  # relative
 
 from utils.compress import compress, CompressionProfiler
+from utils.image_display import display_all
 
 
 # some constants
@@ -23,12 +24,12 @@ IMAGES_FOLDER = pathlib.Path(pathlib.Path(__file__).parents[2]).joinpath("images
 LOG_LEVEL = logging.DEBUG
 
 
-def initialize_logging(level: str | int | None) -> logging.Logger:
+def initialize_logging(level: str | int = LOG_LEVEL) -> logging.Logger:
     """
     Creates new logger and sets the level to the given level
     """
     logger = logging.getLogger("image_compression_logger")
-    logging.basicConfig(level=LOG_LEVEL if level is None else level)
+    logging.basicConfig(level=level)
 
     return logger
 
@@ -37,7 +38,7 @@ def start():
     logger = initialize_logging(LOG_LEVEL)
 
     # image name and path
-    image_name = f"640316.jpg"
+    image_name = f"mt_everest.jpg"
     img_path = IMAGES_FOLDER.joinpath(image_name)
 
     # loading the image
@@ -47,73 +48,33 @@ def start():
     if img is None:
         sys.exit("The Image couldn't be read.")
 
-    original_images = ["BGR", "B", "G", "R"]
-    offset_x = img.shape[1]
-    offset_y = img.shape[0] + 20
-
-    # the windows to display the original image/s
-    for i, image_name in enumerate(original_images):
-        cv2.namedWindow(
-            f"original_image_{image_name}",
-            cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED
-        )
-        cv2.moveWindow(f"original_image_{image_name}", i * offset_x, 10)
-
-    # the windows to display the compressed image/s
-    for i, image_name in enumerate(original_images):
-        cv2.namedWindow(
-            f"compressed_image_{image_name}",
-            cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED
-        )
-        cv2.moveWindow(f"compressed_image_{image_name}",  i * offset_x, offset_y)
-
     main_profiler = CompressionProfiler(0)
 
-    with main_profiler:
-        # compression
-        logger.debug("Starting Image compression.")
-        compressed_img = compress(img)
-        logger.debug("Finished Image compression")
+    images = [img]
+    texts = ["Original Image", "Original Image 1"]
 
-    logger.debug(f"Compression took {main_profiler.t} seconds.")
+    if not display_all(images, texts=texts):
+        return
 
-    while True:
-        # the windows to display the original image/s
-        for i, image_name in enumerate(original_images):
-            image_to_show = numpy.zeros((img.shape), dtype=img.dtype)
+    for compression_percentage in range(50, 100, 10):
 
-            if i == 0:  # showing the original image
-                image_to_show = img
-            else:  # copying only one channel in case of separate images
-                image_to_show[:, :, i - 1] = img[:, :, i - 1]
+        compression_threshold = compression_percentage * 0.01
+        with main_profiler:
+            # compression
+            logger.debug("Starting Image compression.")
+            compressed_img = compress(img, compression_threshold)
+            logger.debug("Finished Image compression")
 
-            cv2.imshow(f"original_image_{image_name}", image_to_show)
+        logger.debug(f"Compression took {main_profiler.t} seconds.")
+        images.append(compressed_img)
+        texts.append(f"Compressed {compression_percentage}%.")
 
-        # the windows to display the compressed image/s
-        for i, image_name in enumerate(original_images):
-            image_to_show = numpy.zeros(
-                (compressed_img.shape), dtype=compressed_img.dtype
-            )
-
-            if i == 0:  # showing the original image
-                image_to_show = compressed_img
-            else:  # copying only one channel in case of separate images
-                image_to_show[:, :, i - 1] = compressed_img[:, :, i - 1]
-
-            cv2.imshow(f"compressed_image_{image_name}", image_to_show)
-
-        # showing the difference
-        diff_img = numpy.abs(numpy.subtract(img,compressed_img))
-        cv2.namedWindow("Diff Img", cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
-        cv2.imshow("Diff Img", diff_img)
-
-        # pressing "q" will close the window
-        k = cv2.waitKey() & ord("q")
-
-        if k:
-            break
-
-    cv2.destroyAllWindows()
+        # runs until key press events (q or n)
+        cont = display_all(images, texts=texts)
+           
+        if not cont:
+            logger.info("Exited as per user request.")
+            return
 
 
 if __name__ == "__main__":
