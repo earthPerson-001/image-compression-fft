@@ -7,20 +7,27 @@ import time
 
 from utils.fast_fourier_transform import fft_2d, ifft_2d
 
-class CompressionProfiler(contextlib.ContextDecorator):
+class CompressionProfile(contextlib.ContextDecorator):
     """
-      Compression Profile class. Usage: @CompressionProfiler() decorator or 'with CompressionProfiler():' context manager
+      Compression Profile class. Usage: @CompressionProfile() decorator or 'with CompressionProfile():' context manager
     """
-    def __init__(self, t=0.0):
+    def __init__(self, t=0.0, logger: logging.Logger | None = None):
         self.t = t
+        self.logger = logger
 
     def __enter__(self):
         self.start = self.time()
+        if self.logger is not None:
+            self.logger.debug("Started compression.")
         return self
 
     def __exit__(self, type, value, traceback):
         self.dt = self.time() - self.start  # delta-time
+        if self.logger is not None:
+            self.logger.debug(f"Compression took {self.dt} seconds." )
         self.t += self.dt  # accumulate dt
+        if self.logger is not None:
+            self.logger.debug("Finished compression.")
 
     def time(self):
         return time.time()
@@ -55,6 +62,7 @@ def display_images(images: list[numpy.ndarray], window_names: list[str] | None =
         cv2.destroyWindow(f"Img({i})" if window_names is None else window_names[i])
 
 
+@CompressionProfile(logger=logger)
 def compress(original_img: numpy.ndarray, threshold=0.9) -> numpy.ndarray:
     compressed_img = numpy.zeros((original_img.shape), original_img.dtype)
 

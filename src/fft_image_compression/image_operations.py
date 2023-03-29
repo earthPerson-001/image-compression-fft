@@ -15,7 +15,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))  # add SRC_DIR to PATH
 SRC_DIR = pathlib.Path(os.path.relpath(SRC_DIR, pathlib.Path.cwd()))  # relative
 
-from utils.compress import compress, CompressionProfiler
+from utils.compress import compress
 from utils.image_display import display_all
 
 
@@ -48,10 +48,8 @@ def start():
     if img is None:
         sys.exit("The Image couldn't be read.")
 
-    main_profiler = CompressionProfiler(0)
-
     images = [img]
-    texts = ["Original Image", "Original Image 1"]
+    texts = ["Original Image"]
 
     if not display_all(images, texts=texts):
         return
@@ -59,15 +57,11 @@ def start():
     for compression_percentage in range(50, 100, 10):
 
         compression_threshold = compression_percentage * 0.01
-        with main_profiler:
-            # compression
-            logger.debug("Starting Image compression.")
-            compressed_img = compress(img, compression_threshold)
-            logger.debug("Finished Image compression")
+        # compression
+        compressed_img = compress(img, compression_threshold)
 
-        logger.debug(f"Compression took {main_profiler.t} seconds.")
         images.append(compressed_img)
-        texts.append(f"Compressed {compression_percentage}%.")
+        texts.append(f"Compression {compression_percentage}%.")
 
         # runs until key press events (q or n)
         cont = display_all(images, texts=texts)
@@ -75,7 +69,6 @@ def start():
         if not cont:
             logger.info("Exited as per user request.")
             return
-
 
 if __name__ == "__main__":
     start()
