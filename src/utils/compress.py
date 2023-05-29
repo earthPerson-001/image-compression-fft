@@ -24,7 +24,7 @@ class CompressionProfile(contextlib.ContextDecorator):
     def __exit__(self, type, value, traceback):
         self.dt = self.time() - self.start  # delta-time
         if self.logger is not None:
-            self.logger.debug(f"Compression took {self.dt} seconds." )
+            self.logger.debug(f"Compression took {self.dt * 1e3:.2f} ms." )
         self.t += self.dt  # accumulate dt
         if self.logger is not None:
             self.logger.debug("Finished compression.")
@@ -65,10 +65,13 @@ def display_images(images: list[numpy.ndarray], window_names: list[str] | None =
 @CompressionProfile(logger=logger)
 def compress(original_img: numpy.ndarray, threshold=0.9) -> numpy.ndarray:
     compressed_img = numpy.zeros((original_img.shape), original_img.dtype)
+    is_grayscale_image = len(compressed_img.shape) < 3
 
-    for channel in range(compressed_img.shape[2]):
-
-        one_channel_img = original_img[:, :, channel]
+    for channel in range(1 if is_grayscale_image else compressed_img.shape[2]):
+        if is_grayscale_image:
+            one_channel_img = original_img
+        else:
+            one_channel_img = original_img[:, :, channel]
 
         all_coefficients = fft_2d(one_channel_img)
 
@@ -85,7 +88,10 @@ def compress(original_img: numpy.ndarray, threshold=0.9) -> numpy.ndarray:
 
         output_from_ifft2d = ifft_2d(new_coefficients, output_shape=original_img.shape[:2]).real
 
-        compressed_img[:, :, channel] = output_from_ifft2d
+        if is_grayscale_image:
+            compressed_img[:, :]= output_from_ifft2d
+        else:
+            compressed_img[:, :, channel] = output_from_ifft2d
 
         # display_images(
         #     [

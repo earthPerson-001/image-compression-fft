@@ -26,7 +26,7 @@ def display_all(
     max_width = max(img.shape[1] for img in img_array)
 
     n_horizontal = (
-        max(img.shape[2] for img in img_array) + 1
+        max(0 if len(img.shape) < 3 else img.shape[2] for img in img_array) + 1
     )  # corresponding to maximum channel and a complete image
     n_vertical = len(img_array)  # corresponding to number of images
 
@@ -34,18 +34,21 @@ def display_all(
     image_width = n_horizontal * max_width  # multiple of maximum channels
 
     # gaps between images
-    h_gap = int(0.1 * image_height)
+    h_gap = 0 if n_horizontal==1 else int(0.1 * image_height)  # in a single row, there is only image in case of grayscale image
     v_gap = int(0.1 * image_width)
 
     # colors for gaps (For BGR values)
-    h_gap_color = [255, 255, 255]
-    v_gap_color = [255, 255, 255]
+    h_gap_color = 255 if n_horizontal < 3 else [255, 255, 255]
+    v_gap_color = 255 if n_horizontal < 3 else [255, 255, 255]
 
     # creating a bigger image to place all the images
     height: int = int(image_height + (n_vertical) * v_gap)
     width: int = int(image_width + (n_horizontal) * h_gap)
 
-    whole_img = numpy.zeros((height, width, n_horizontal - 1), dtype=dtype)
+    if n_horizontal == 1:
+        whole_img = numpy.zeros((height, width), dtype=dtype)
+    else:
+        whole_img = numpy.zeros((height, width, n_horizontal - 1), dtype=dtype)
 
     # displaying the columns
     for image_number, image in enumerate(img_array):
@@ -53,36 +56,51 @@ def display_all(
 
         # the complete image
         starting_height: int = int(image_number * (max_height + v_gap))
-        whole_img[
+        if (len(image.shape) < 3):
+
+            whole_img[
+                starting_height : starting_height + image.shape[0],
+                0 : image.shape[1]
+            ] = image
+        else:
+            whole_img[
             starting_height : starting_height + image.shape[0],
             0 : image.shape[1],
-            : image.shape[2],
+            : 0 if len(image.shape) < 3 else image.shape[2]
         ] = image
+        
+        if not (len(image.shape) < 3):  # grayscale image doesn't have channels
+            for channel in range(1 if len(image.shape) < 3 else image.shape[2]):
+                starting_width: int = int((channel + 1) * (max_width + h_gap))
 
-        for channel in range(image.shape[2]):
-            starting_width: int = int((channel + 1) * (max_width + h_gap))
-
-            # filling the horizontal gap
-            whole_img[
-                starting_height : starting_height + image.shape[0],
-                starting_width - h_gap : starting_width,
-            ] = h_gap_color
-
-            start_column = starting_width
-            end_column = starting_width + image.shape[1]
-            whole_img[
-                starting_height : starting_height + image.shape[0],
-                start_column:end_column,
-                channel,
-            ] = image[:, :, channel]
-
-            # last horizontal gap
-            if channel == image.shape[2] - 1:
                 # filling the horizontal gap
                 whole_img[
                     starting_height : starting_height + image.shape[0],
-                    end_column : ,
+                    starting_width - h_gap : starting_width,
                 ] = h_gap_color
+
+                start_column = starting_width
+                end_column = starting_width + image.shape[1]
+
+                if len(image.shape) < 3:
+                    whole_img[
+                    starting_height : starting_height + image.shape[0],
+                    start_column:end_column,
+                ] = image
+                else:
+                    whole_img[
+                        starting_height : starting_height + image.shape[0],
+                        start_column:end_column,
+                        channel,
+                    ] = image[:, :, channel]
+
+                # last horizontal gap
+                if channel == (1 if len(image.shape) < 3 else image.shape[2]) - 1:
+                    # filling the horizontal gap
+                    whole_img[
+                        starting_height : starting_height + image.shape[0],
+                        end_column : ,
+                    ] = h_gap_color
 
         # filling the vertical gap
         
@@ -104,7 +122,7 @@ def display_all(
             fontScale=cv2.getFontScaleFromHeight(
                 cv2.FONT_HERSHEY_PLAIN, int(0.25 * v_gap), thickness=10
             ),
-            color=(255, 0, 0),
+            color= 0 if len(image.shape) < 3 else (255, 0, 0),  # black colored test in case of grayscale image
             bottomLeftOrigin=False,
             thickness=10,
         )
